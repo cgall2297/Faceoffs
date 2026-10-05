@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Loyola Faceoff Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column — game tabs, period/zone chips, a big Won/Lost row per center, then results table and draw log */
+:root {
+  --ice: #f2f5f8;
+  --surface: #ffffff;
+  --line: #d6dde5;
+  --ink: #142030;
+  --muted: #5c6a7a;
+  --accent: #7a1f35;      /* Loyola maroon */
+  --gold: #b8861f;
+  --win: #1d7a4b;
+  --loss: #b2332a;
+  --on-strong: #ffffff;
+  --chip: #e6ebf1;
+  --display: "Saira Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ice: #0d131a; --surface: #151f2a; --line: #273443; --ink: #e7edf3; --muted: #93a1b1;
+    --accent: #d8738b; --gold: #e2b85c; --win: #4fc58c; --loss: #f0796d; --on-strong: #0b1118; --chip: #1e2a37;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ice: #0d131a; --surface: #151f2a; --line: #273443; --ink: #e7edf3; --muted: #93a1b1;
+  --accent: #d8738b; --gold: #e2b85c; --win: #4fc58c; --loss: #f0796d; --on-strong: #0b1118; --chip: #1e2a37;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+body { background: var(--ice); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.45; }
+.wrap { max-width: 560px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 48px; display: flex; flex-direction: column; gap: 20px; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.top { display: flex; flex-direction: column; gap: 2px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.eyebrow b { color: var(--accent); }
+h1 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: .01em; text-wrap: balance; }
+h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 20px; letter-spacing: .02em; text-transform: uppercase; }
+
+/* game tabs */
+.games { display: flex; gap: 6px; flex-wrap: wrap; }
+.tab { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 7px 14px; font-size: 14px; display: flex; gap: 6px; align-items: baseline; }
+.tab small { color: var(--muted); font-size: 12px; }
+.tab[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-strong); }
+.tab[aria-pressed="true"] small { color: inherit; opacity: .8; }
+.tab.ghost { border-style: dashed; background: transparent; color: var(--muted); }
+
+.addgame { display: flex; gap: 8px; flex-wrap: wrap; }
+.addgame input { flex: 1 1 140px; min-width: 0; }
+
+/* controls */
+.panel { display: flex; flex-direction: column; gap: 14px; }
+.ctrls { display: flex; flex-wrap: wrap; gap: 12px 20px; }
+.ctrl { display: flex; align-items: center; gap: 8px; }
+.lbl { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.seg { display: flex; background: var(--chip); border-radius: 8px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; padding: 6px 11px; border-radius: 6px; font-family: var(--display); font-weight: 700; font-size: 16px; letter-spacing: .03em; color: var(--muted); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+/* centers */
+.centers { display: flex; flex-direction: column; gap: 10px; }
+.center { display: grid; grid-template-columns: auto 1fr; gap: 10px 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.num { font-family: var(--display); font-weight: 800; font-size: 30px; line-height: 1; min-width: 2.2ch; text-align: center; color: var(--accent); font-variant-numeric: tabular-nums; }
+.who { min-width: 0; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.name { font-weight: 600; font-size: 16px; }
+.rec { font-family: var(--display); font-weight: 700; font-size: 18px; font-variant-numeric: tabular-nums; }
+.rec span { color: var(--muted); font-weight: 500; }
+.btns { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn-w, .btn-l { border: 0; border-radius: 10px; padding: 14px 8px; font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase; color: var(--on-strong); transition: transform .08s ease; }
+.btn-w { background: var(--win); }
+.btn-l { background: var(--loss); }
+.btn-w:active, .btn-l:active { transform: scale(.97); }
+.rm { border: 0; background: none; color: var(--muted); font-size: 13px; text-decoration: underline; padding: 0; }
+
+.addc { display: flex; gap: 8px; flex-wrap: wrap; }
+input[type="text"] { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+#cNum { width: 5.5em; }
+#cName { flex: 1 1 120px; min-width: 0; }
+.plain { border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 9px 14px; font-weight: 500; }
+.plain:disabled { opacity: .45; cursor: default; }
+.rowacts { display: flex; gap: 8px; flex-wrap: wrap; }
+.note { color: var(--muted); font-size: 13px; margin: 0; }
+.allnote { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 14px; color: var(--muted); margin: 0; }
+
+/* results */
+.results { display: flex; flex-direction: column; gap: 10px; }
+.tablewrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { padding: 9px 10px; text-align: right; white-space: nowrap; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td.pct { font-family: var(--display); font-weight: 800; font-size: 18px; }
+td.z { color: var(--muted); font-size: 13px; }
+tr.tot td { border-bottom: 0; font-weight: 600; background: var(--chip); }
+.hi { color: var(--win); } .lo { color: var(--loss); }
+
+/* log */
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.log li { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.log li:last-child { border-bottom: 0; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.dot.w { background: var(--win); } .dot.l { background: var(--loss); }
+.log .meta { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 0; flex: 1; }
+.log .x { border: 0; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 2px 6px; }
+.empty { padding: 14px; color: var(--muted); font-size: 14px; }
+
+.confirm { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
+.danger { border: 0; background: var(--loss); color: var(--on-strong); border-radius: 8px; padding: 9px 14px; font-weight: 600; }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--ice); padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; transition: opacity .15s; white-space: nowrap; max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis; }
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .btn-w, .btn-l, .toast { transition: none; } }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="top">
+    <div class="eyebrow"><b>Loyola Varsity Gold</b> · Faceoffs</div>
+    <h1>Faceoff Tracker</h1>
+  </header>
+
+  <nav class="games" id="games" aria-label="Game"></nav>
+  <form class="addgame" id="addGameForm" hidden>
+    <input type="text" id="gOpp" placeholder="Opponent" autocomplete="off">
+    <input type="text" id="gDate" placeholder="Date (e.g. Oct 10)" autocomplete="off">
+    <button class="plain" type="submit">Add game</button>
+  </form>
+
+  <section class="panel" id="logPanel">
+    <div class="ctrls">
+      <div class="ctrl"><span class="lbl">Period</span><div class="seg" id="periods"></div></div>
+      <div class="ctrl"><span class="lbl">Zone</span><div class="seg" id="zones"></div></div>
+    </div>
+    <p class="note">Zone is from Loyola's side: OZ = our offensive zone. Period and zone stay set until you change them.</p>
+    <div class="centers" id="centers"></div>
+    <div class="rowacts">
+      <button class="plain" id="undo" type="button">Undo last draw</button>
+    </div>
+    <form class="addc" id="addCenter">
+      <input type="text" id="cNum" placeholder="#" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="Jersey number">
+      <input type="text" id="cName" placeholder="Last name (optional)" autocomplete="off" aria-label="Last name">
+      <button class="plain" type="submit">Add center</button>
+    </form>
+  </section>
+  <p class="allnote" id="allNote" hidden>Showing both games combined. Pick a single game above to log draws.</p>
+
+  <section class="results">
+    <h2 id="resTitle">Results</h2>
+    <div class="tablewrap"><table id="stats"></table></div>
+    <div class="rowacts">
+      <button class="plain" id="copy" type="button">Copy summary</button>
+    </div>
+  </section>
+
+  <section class="results">
+    <h2>Draw log</h2>
+    <ol class="log" id="log"></ol>
+    <div id="resetArea"></div>
+  </section>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  const KEY = 'loyola-fo-tracker-v1';
+  const ZONES = [['O', 'OZ'], ['N', 'NZ'], ['D', 'DZ']];
+  const PERIODS = ['1', '2', '3', 'OT'];
+
+  function defaults() {
+    return {
+      games: [
+        { id: 'sti', opp: 'St. Ignatius', date: 'Oct 3' },
+        { id: 'gbn', opp: 'Glenbrook North', date: 'Oct 4' }
+      ],
+      view: 'sti',
+      centers: [{ num: '22', name: 'Gall' }],
+      draws: [],
+      zone: 'N',
+      per: '1'
+    };
+  }
+  function load() { try { const r = localStorage.getItem(KEY); return r ? JSON.parse(r) : null; } catch (e) { return null; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+  let S = load() || defaults();
+  let confirming = false;
+  let showAddGame = false;
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const game = id => S.games.find(g => g.id === id);
+  const label = c => '#' + c.num + (c.name ? ' ' + c.name : '');
+  const centerByNum = n => S.centers.find(c => c.num === n) || { num: n, name: '' };
+  const inView = () => S.view === 'all' ? S.draws : S.draws.filter(d => d.g === S.view);
+
+  function rec(list) {
+    const w = list.filter(d => d.w).length, n = list.length;
+    return { w, l: n - w, n, pct: n ? (w / n * 100) : null };
+  }
+  const fmtPct = p => p === null ? '—' : p.toFixed(1) + '%';
+  const pctClass = p => p === null ? '' : p >= 50 ? 'hi' : 'lo';
+
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.classList.add('on');
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('on'), 1400);
+  }
+
+  function renderGames() {
+    const tabs = S.games.map(g =>
+      `<button class="tab" type="button" data-view="${esc(g.id)}" aria-pressed="${S.view === g.id}">vs ${esc(g.opp)} <small>${esc(g.date)}</small></button>`
+    );
+    tabs.push(`<button class="tab" type="button" data-view="all" aria-pressed="${S.view === 'all'}">All games</button>`);
+    tabs.push(`<button class="tab ghost" type="button" id="toggleAddGame">+ Game</button>`);
+    $('games').innerHTML = tabs.join('');
+    $('addGameForm').hidden = !showAddGame;
+  }
+
+  function renderControls() {
+    $('periods').innerHTML = PERIODS.map(p => `<button type="button" data-per="${p}" aria-pressed="${S.per === p}">${p}</button>`).join('');
+    $('zones').innerHTML = ZONES.map(([k, t]) => `<button type="button" data-zone="${k}" aria-pressed="${S.zone === k}">${t}</button>`).join('');
+  }
+
+  function renderCenters() {
+    const list = inView();
+    $('centers').innerHTML = S.centers.map(c => {
+      const r = rec(list.filter(d => d.c === c.num));
+      const any = S.draws.some(d => d.c === c.num);
+      return `<div class="center">
+        <div class="num">${esc(c.num)}</div>
+        <div class="who">
+          <div><div class="name">${esc(c.name || 'Center')}</div>${any ? '' : `<button class="rm" type="button" data-rm="${esc(c.num)}">Remove</button>`}</div>
+          <div class="rec">${r.w}–${r.l} <span>· ${fmtPct(r.pct)}</span></div>
+        </div>
+        <div class="btns">
+          <button class="btn-w" type="button" data-c="${esc(c.num)}" data-w="1">Won</button>
+          <button class="btn-l" type="button" data-c="${esc(c.num)}" data-w="0">Lost</button>
+        </div>
+      </div>`;
+    }).join('');
+    $('undo').disabled = !inView().length;
+  }
+
+  function zoneCell(list, z) {
+    const r = rec(list.filter(d => d.z === z));
+    return r.n ? `${r.w}–${r.l}` : '—';
+  }
+
+  function renderStats() {
+    const list = inView();
+    const g = game(S.view);
+    $('resTitle').textContent = S.view === 'all' ? 'Results · all games' : `Results · vs ${g ? g.opp : ''}`;
+    const nums = Array.from(new Set(S.centers.map(c => c.num).concat(list.map(d => d.c))));
+    const rows = nums.map(n => ({ c: centerByNum(n), list: list.filter(d => d.c === n) }))
+      .sort((a, b) => b.list.length - a.list.length);
+    let html = `<thead><tr><th>Center</th><th>W–L</th><th>FO%</th><th>OZ</th><th>NZ</th><th>DZ</th></tr></thead><tbody>`;
+    rows.forEach(({ c, list: l }) => {
+      const r = rec(l);
+      html += `<tr><td>${esc(label(c))}</td><td>${r.w}–${r.l}</td><td class="pct ${pctClass(r.pct)}">${fmtPct(r.pct)}</td>
+        <td class="z">${zoneCell(l, 'O')}</td><td class="z">${zoneCell(l, 'N')}</td><td class="z">${zoneCell(l, 'D')}</td></tr>`;
+    });
+    const t = rec(list);
+    html += `<tr class="tot"><td>Loyola total</td><td>${t.w}–${t.l}</td><td class="pct ${pctClass(t.pct)}">${fmtPct(t.pct)}</td>
+      <td class="z">${zoneCell(list, 'O')}</td><td class="z">${zoneCell(list, 'N')}</td><td class="z">${zoneCell(list, 'D')}</td></tr></tbody>`;
+    $('stats').innerHTML = html;
+  }
+
+  function renderLog() {
+    const list = inView().slice().reverse().slice(0, 25);
+    if (!list.length) {
+      $('log').innerHTML = `<li class="empty">No draws yet. Tap Won or Lost on a center after each faceoff.</li>`;
+    } else {
+      $('log').innerHTML = list.map(d => {
+        const z = ZONES.find(x => x[0] === d.z)[1];
+        const gm = S.view === 'all' && game(d.g) ? ` · ${esc(game(d.g).opp)}` : '';
+        return `<li><span class="dot ${d.w ? 'w' : 'l'}"></span>
+          <span class="meta">P${esc(d.p)} · ${z} · ${esc(label(centerByNum(d.c)))} · ${d.w ? 'Won' : 'Lost'}${gm}</span>
+          <button class="x" type="button" data-del="${d.id}" aria-label="Delete this draw">×</button></li>`;
+      }).join('');
+    }
+    const n = S.view === 'all' ? 0 : inView().length;
+    $('resetArea').innerHTML = !n ? '' : confirming
+      ? `<div class="confirm">Clear all ${n} draws for this game? <button class="danger" type="button" id="doReset">Clear</button><button class="plain" type="button" id="noReset">Cancel</button></div>`
+      : `<button class="plain" type="button" id="askReset">Clear this game's draws</button>`;
+  }
+
+  function render() {
+    const all = S.view === 'all';
+    $('logPanel').hidden = all;
+    $('allNote').hidden = !all;
+    renderGames(); renderControls(); renderCenters(); renderStats(); renderLog();
+  }
+
+  function summary() {
+    const list = inView();
+    const g = game(S.view);
+    const head = S.view === 'all' ? 'Loyola faceoffs — all games' : `Loyola faceoffs — vs ${g.opp} (${g.date})`;
+    const nums = Array.from(new Set(S.centers.map(c => c.num).concat(list.map(d => d.c))));
+    const lines = nums.map(n => {
+      const l = list.filter(d => d.c === n), r = rec(l);
+      if (!r.n) return null;
+      return `${label(centerByNum(n))}: ${r.w}-${r.l} (${fmtPct(r.pct)}) | OZ ${zoneCell(l, 'O')}, NZ ${zoneCell(l, 'N')}, DZ ${zoneCell(l, 'D')}`;
+    }).filter(Boolean);
+    const t = rec(list);
+    lines.push(`Team: ${t.w}-${t.l} (${fmtPct(t.pct)})`);
+    return [head].concat(lines).join('\n').replace(/–/g, '-');
+  }
+
+  document.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.view) { S.view = b.dataset.view; confirming = false; save(); render(); return; }
+    if (b.id === 'toggleAddGame') { showAddGame = !showAddGame; renderGames(); if (showAddGame) $('gOpp').focus(); return; }
+    if (b.dataset.per) { S.per = b.dataset.per; save(); renderControls(); return; }
+    if (b.dataset.zone) { S.zone = b.dataset.zone; save(); renderControls(); return; }
+    if (b.dataset.c !== undefined && b.dataset.w !== undefined) {
+      const w = b.dataset.w === '1';
+      S.draws.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), g: S.view, c: b.dataset.c, w, z: S.zone, p: S.per });
+      save(); render();
+      const z = ZONES.find(x => x[0] === S.zone)[1];
+      toast(`${w ? 'Won' : 'Lost'} · #${b.dataset.c} · ${z} · P${S.per}`);
+      return;
+    }
+    if (b.dataset.rm) { S.centers = S.centers.filter(c => c.num !== b.dataset.rm); save(); render(); return; }
+    if (b.dataset.del) { S.draws = S.draws.filter(d => d.id !== b.dataset.del); save(); render(); toast('Draw deleted'); return; }
+    if (b.id === 'undo') {
+      for (let i = S.draws.length - 1; i >= 0; i--) {
+        if (S.draws[i].g === S.view) { S.draws.splice(i, 1); break; }
+      }
+      save(); render(); toast('Last draw removed'); return;
+    }
+    if (b.id === 'askReset') { confirming = true; renderLog(); return; }
+    if (b.id === 'noReset') { confirming = false; renderLog(); return; }
+    if (b.id === 'doReset') { S.draws = S.draws.filter(d => d.g !== S.view); confirming = false; save(); render(); toast('Game cleared'); return; }
+    if (b.id === 'copy') {
+      const text = summary();
+      try {
+        navigator.clipboard.writeText(text).then(() => toast('Summary copied'), () => fallbackCopy(text));
+      } catch (err) { fallbackCopy(text); }
+      return;
+    }
+  });
+
+  function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+    toast(ok ? 'Summary copied' : 'Copy blocked here. Select the table text instead.');
+  }
+
+  $('addCenter').addEventListener('submit', e => {
+    e.preventDefault();
+    const num = $('cNum').value.replace(/[^0-9]/g, '');
+    const name = $('cName').value.trim();
+    if (!num) { toast('Enter a jersey number'); return; }
+    if (S.centers.some(c => c.num === num)) { toast('#' + num + ' is already on the list'); return; }
+    S.centers.push({ num, name });
+    $('cNum').value = ''; $('cName').value = '';
+    save(); render(); toast('Added #' + num);
+  });
+
+  $('addGameForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const opp = $('gOpp').value.trim(), date = $('gDate').value.trim();
+    if (!opp) { toast('Enter the opponent'); return; }
+    const id = 'g' + Date.now().toString(36);
+    S.games.push({ id, opp, date });
+    S.view = id; showAddGame = false;
+    $('gOpp').value = ''; $('gDate').value = '';
+    save(); render(); toast('Added vs ' + opp);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
